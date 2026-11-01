@@ -1,7 +1,20 @@
-# Lab 5, variant 15: potik vymiryuvan cherez in'yektsiyu postachalnyka
+# Лабораторна робота 5. Ліниві обчислення (варіант 15)
 
-postachalnyk: Callable, shcho povertaye nastupne znachennya. vymiryuvannya robyt potik cherez iter(callable, sentinel).
-Instrumenty itertools: islice, accumulate, count, tee. Vlasni heneratory: stvoryty_vikna, prefiksni_statystyky.
-Universalni: vzyaty (take), propustyty (drop), kovzne_vikno (sliding_window).
+**Тема:** потік випадкових вимірювань з інʼєкцією постачальника значень.
 
-Zapusk: python main.py | pytest -q
+## Склад
+- `vymiryuvannya(postachalnyk, storozha)` — потік вимірювань через `iter(callable, sentinel)`; постачальник передається ззовні, тому в тестах він детермінований.
+- `dopustymi` — лінивий фільтр допустимих значень.
+- `vzyaty` (take), `propustyty` (drop), `kovzne_vikno` (sliding window).
+- `ruhome_serednye` — рухоме середнє.
+- `prefiksni_statystyky` — накопичені кількість, сума, мінімум, максимум і середнє (`accumulate`, `count`, `tee`).
+
+## Лінивість і крайні випадки
+Тести перевіряють, що постачальник викликається лише потрібну кількість разів, а також порожнє джерело, `n = 0`, вікно більше за довжину потоку та некоректний розмір вікна.
+
+## Запуск
+```
+pip install -r requirements.txt
+python main.py
+pytest -q
+```

@@ -1,8 +1,21 @@
-# Lab 8, variant 15: abstraktne derevo zapytiv
+# Лабораторна робота 8. Алгебраїчні типи даних (варіант 15)
 
-ADT: Pole, Rivno, Ta, Abo, Ne (frozen dataclass), Query = TypeAlias dlya ob'yednannya.
-Literal: Operator. Protocol: MaiePole. Operatsiyi: obchyslyty_zapyt (eval_query), renderyty_zapyt (render_query),
-polya_zapytu, vidfiltruvaty. Rozbir cherez match/case, usi vitky zakryti assert_never.
-Vidsutnie pole v zapysi daye False (ne pomylku).
+**Тема:** абстрактне дерево запитів для фільтрації словників.
 
-Zapusk: python main.py | pytest -q | mypy --strict .
+## Модель
+- Вузли: `Pole`, `Rivno`, `Ta` (and), `Abo` (or), `Ne` (not) — незмінні `@dataclass(frozen=True)`.
+- `Query` — `TypeAlias` обʼєднання вузлів; `Operator` — `Literal`; `MaiePole` — `Protocol`.
+
+## Операції
+- `obchyslyty_zapyt` — обчислення запиту для запису (`match/case`).
+- `renderyty_zapyt` — текстове представлення запиту.
+- `polya_zapytu`, `vidfiltruvaty` — допоміжні операції.
+- Усі гілки `match` закриті через `assert_never`. Відсутнє поле в записі дає `False`, а не помилку.
+
+## Запуск
+```
+pip install -r requirements.txt
+python main.py
+pytest -q
+mypy --strict .
+```

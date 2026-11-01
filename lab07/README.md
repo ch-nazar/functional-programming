@@ -1,10 +1,23 @@
-# Lab 7, variant 15: rezultaty laboratornykh robit
+# Лабораторна робота 7. functools та operator (варіант 15)
 
-Konveyer (pipeline cherez functools.reduce):
-normalizuvaty -> vidibraty zdani -> LabResult -> pidsumkovyi bal (partial: shtraf za sprobu) -> Top-N.
-operator: itemgetter, attrgetter, methodcaller. singledispatch: zavantazhyty_zapysy dlya str (JSON/CSV tekst),
-Path (.json/.csv), vidkrytoho tekstovoho fajlu ta spysku/kortezha.
-LabResult z @total_ordering porivnyuyetsya za (score, attempts, student, lab); chuzhi typy -> NotImplemented.
-Top-N: bal za spadannyam, sprob za zrostannyam, imya za zrostannyam (tri stabilni sortuvannya).
+**Предметна область:** результати лабораторних робіт (студент, лабораторна, бал, спроби, здано).
 
-Zapusk: python main.py | pytest -q | mypy --strict . | black . | ruff check .
+## Конвеєр
+`pipeline` (через `functools.reduce`): нормалізація записів → відбір зданих робіт → створення `LabResult` → підсумковий бал зі штрафом за додаткові спроби (`partial`) → Top-N.
+
+## Використані засоби
+- `operator`: `itemgetter`, `attrgetter`, `methodcaller`.
+- `functools`: `partial`, `reduce`, `singledispatch`, `total_ordering`.
+- `zavantazhyty_zapysy` (singledispatch) приймає рядок (JSON або CSV), `Path` (`.json`/`.csv`), відкритий текстовий файл та список/кортеж записів.
+- `LabResult` порівнюється за `(score, attempts, student, lab)`; для чужих типів повертається `NotImplemented`.
+- Багатокритеріальне сортування: бал за спаданням, спроби за зростанням, імʼя за зростанням (три стабільні сортування).
+
+## Запуск
+```
+pip install -r requirements.txt
+python main.py
+pytest -q
+mypy --strict .
+black .
+ruff check .
+```

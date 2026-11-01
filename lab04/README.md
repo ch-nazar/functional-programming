@@ -1,9 +1,22 @@
-# Lab 4, variant 15: zadacha pro ryukzak 0/1
+# Лабораторна робота 4. Рекурсія та мемоізація (варіант 15)
 
-Bazovyi vypadok: indeks == len(vahy) -> 0. Rekursyvnyi krok: vzyaty abo ne vzyaty predmet.
-Versiyi: rukzak_bez_keshu, rukzak_z_keshem (lru_cache na (indeks, zalyshok)), rukzak_iteratyvno.
+**Задача:** рюкзак 0/1 — максимальна цінність предметів за обмеженої місткості.
 
-CPython maye limit rekursiyi (~1000 kadriv, sys.getrecursionlimit()) i ne maye TCO,
-tomu rekursiya hlybyny n = kilkist predmetiv padaye z RecursionError, a iteratyvna versiya bezpechna.
+## Версії
+- `rukzak_bez_keshu` — чиста рекурсія.
+- `rukzak_z_keshem` — рекурсія з `@lru_cache` для стану `(indeks, zalyshok)`; `cache_info()` і `cache_clear()` показані в `benchmark.py`.
+- `rukzak_iteratyvno` — динамічне програмування без рекурсії.
 
-Zapusk: python benchmark.py | pytest -q
+## Базовий випадок і крок
+- База: усі предмети розглянуто (`indeks == len(vahy)`), цінність 0.
+- Крок: або не беремо предмет, або беремо його (якщо він вміщується) і зменшуємо залишок місткості.
+
+## Обмеження CPython
+У CPython глибина рекурсії обмежена (приблизно 1000 кадрів, `sys.getrecursionlimit()`), а оптимізації хвостових викликів (TCO) немає. Рекурсивна версія для тисяч предметів падає з `RecursionError`, тоді як ітеративна безпечна. Рекурсивні функції не змінюють вхідні дані.
+
+## Запуск
+```
+pip install -r requirements.txt
+python benchmark.py
+pytest -q
+```

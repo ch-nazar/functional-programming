@@ -1,11 +1,22 @@
-# Lab 6, variant 15: kompozytsiya dekoratoriv dlya servisnoyi funktsiyi
+# Лабораторна робота 6. Замикання та декоратори (варіант 15)
 
-Zamykannya: stvoryty_lichylnyk (nonlocal), stvoryty_logger, stvoryty_keruvanyi_hodynnyk.
-Dekoratory: keshovanyi(ttl), povtory(sproby), vymiryany, ta kompozytsiya skladaty(a, b, c) = a(b(c(f))).
-Zalezhnosti (hodynnyk, spy, zapys) peredayutsya yak Callable, tomu testy ne chekayut realnyi sleep.
+**Тема:** композиція декораторів для сервісної функції.
 
-Poryadok vazhlyvyi:
-- kesh -> povtory -> chas: chas vymiryuye kozhnu sprobu, a vluchannya v kesh povnistyu propuskaye povtory ta chas.
-- chas -> kesh -> povtory: chas vymiryuye kozhen vyklyk, v tomu chysli vluchannya v kesh.
+## Склад
+- Замикання: `stvoryty_lichylnyk` (стан через `nonlocal`), `stvoryty_logger`, `stvoryty_keruvanyi_hodynnyk`.
+- Декоратори: `keshovanyi(ttl)`, `povtory(sproby)`, `vymiryany`, композиція `skladaty(a, b, c)` = `a(b(c(f)))`.
+- Усі декоратори використовують `functools.wraps`, `ParamSpec` і `TypeVar`.
+- Залежності (годинник, `sleep`, логер) передаються як `Callable`, тому тести не чекають реального часу.
 
-Zapusk: python main.py | pytest -q
+## Вплив порядку декораторів
+- `кеш → повтори → час`: час вимірюється для кожної спроби, а влучання в кеш повністю пропускає повтори й вимірювання.
+- `час → кеш → повтори`: час вимірюється для кожного виклику, зокрема й для влучання в кеш.
+
+Різницю підтверджують тести `test_poryadok_dekoratoriv_*`.
+
+## Запуск
+```
+pip install -r requirements.txt
+python main.py
+pytest -q
+```
