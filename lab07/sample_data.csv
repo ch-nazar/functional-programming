@@ -1,0 +1,6 @@
+student,lab,score,attempts,submitted
+ ivan petrenko ,lab1,95,1,true
+olena kovalenko,lab1,95,3,yes
+andrii bondar,lab1,80,1,false
+maria shevchenko,lab1,88.5,2,true
+taras melnyk,lab1,70,4,true

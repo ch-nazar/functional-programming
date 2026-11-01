@@ -1,0 +1,7 @@
+[
+  {"student": "  ivan petrenko ", "lab": "lab1", "score": 95, "attempts": 1, "submitted": true},
+  {"student": "olena kovalenko", "lab": "lab1", "score": 95, "attempts": 3, "submitted": "yes"},
+  {"student": "andrii bondar", "lab": "lab1", "score": 80, "attempts": 1, "submitted": false},
+  {"student": "maria shevchenko", "lab": "lab1", "score": 88.5, "attempts": 2, "submitted": true},
+  {"student": "taras melnyk", "lab": "lab1", "score": 70, "attempts": 4, "submitted": true}
+]
