@@ -1,41 +1,41 @@
 from typing import Any, Mapping, Sequence, assert_never
 
-from model import Abo, MaiePole, Ne, Pole, Query, Rivno, Ta
+from model import Or, HasName, Not, Field, Query, Eq, And
 
 
-def obchyslyty_zapyt(zapyt: Query, rekord: Mapping[str, Any]) -> bool:
-    match zapyt:
-        case Pole(nazva):
-            return bool(rekord.get(nazva, False))
-        case Rivno(pole, znachennya):
-            return pole.nazva in rekord and rekord[pole.nazva] == znachennya
-        case Ta(livyi, pravyi):
-            return obchyslyty_zapyt(livyi, rekord) and obchyslyty_zapyt(pravyi, rekord)
-        case Abo(livyi, pravyi):
-            return obchyslyty_zapyt(livyi, rekord) or obchyslyty_zapyt(pravyi, rekord)
-        case Ne(vnutrishnii):
-            return not obchyslyty_zapyt(vnutrishnii, rekord)
+def eval_query(query: Query, record: Mapping[str, Any]) -> bool:
+    match query:
+        case Field(name):
+            return bool(record.get(name, False))
+        case Eq(field, value):
+            return field.name in record and record[field.name] == value
+        case And(left, right):
+            return eval_query(left, record) and eval_query(right, record)
+        case Or(left, right):
+            return eval_query(left, record) or eval_query(right, record)
+        case Not(inner):
+            return not eval_query(inner, record)
         case _:
-            assert_never(zapyt)
+            assert_never(query)
 
 
-def vidfiltruvaty(zapyt: Query, rekordy: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
-    return [rekord for rekord in rekordy if obchyslyty_zapyt(zapyt, rekord)]
+def filter_records(query: Query, records: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    return [record for record in records if eval_query(query, record)]
 
 
-def nazva_polya(obyekt: MaiePole) -> str:
-    return obyekt.nazva
+def field_name(obj: HasName) -> str:
+    return obj.name
 
 
-def polya_zapytu(zapyt: Query) -> frozenset[str]:
-    match zapyt:
-        case Pole():
-            return frozenset({nazva_polya(zapyt)})
-        case Rivno(pole, _):
-            return frozenset({nazva_polya(pole)})
-        case Ta(livyi, pravyi) | Abo(livyi, pravyi):
-            return polya_zapytu(livyi) | polya_zapytu(pravyi)
-        case Ne(vnutrishnii):
-            return polya_zapytu(vnutrishnii)
+def query_fields(query: Query) -> frozenset[str]:
+    match query:
+        case Field():
+            return frozenset({field_name(query)})
+        case Eq(field, _):
+            return frozenset({field_name(field)})
+        case And(left, right) | Or(left, right):
+            return query_fields(left) | query_fields(right)
+        case Not(inner):
+            return query_fields(inner)
         case _:
-            assert_never(zapyt)
+            assert_never(query)

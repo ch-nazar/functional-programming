@@ -2,19 +2,15 @@
 
 **Предметна область:** система задач проєкту.
 
-## Модель
-- `Komentar` — коментар до задачі (автор, текст).
-- `Zadacha` — задача: `id`, `nazva`, `status`, `priorytet`, `komentari` (tuple), `mitky` (frozenset), `metadani` (MappingProxyType).
-- Обидві сутності — `@dataclass(frozen=True, slots=True)`.
+## Структура
+- `model.py` — `Comment`, `Task` (`@dataclass(frozen=True, slots=True)`), `make_metadata`.
+- `core.py` — чисті оновлення: `create_task`, `add_comment`, `add_label`, `change_status`, `change_priority`, `update_metadata`, `freeze`.
+- `tests/test_immutability.py`, `tests/test_performance.py`, `benchmark.py`, `main.py`.
 
-## Чисті оновлення (повертають нову копію)
-`dodaty_komentar`, `dodaty_mitku`, `zminyty_status`, `zminyty_priorytet`, `zminyty_metadani`.
-
-## Хешування
-`Komentar` хешується повністю. У `Zadacha` поле `metadani` виключено з хешу (`field(hash=False)`), бо `MappingProxyType` над `dict` не хешується.
-
-## Порівняння часу
-`benchmark.py` порівнює змінну версію (list/set/dict) і незмінну (tuple/frozenset). Незмінна версія повільніша через копіювання кортежів, але безпечніша: немає прихованих змін, а об'єкти хешуються.
+## Рішення
+- Коментарі — `tuple`, мітки — `frozenset`, метадані — `MappingProxyType` над копією словника.
+- `Comment` хешується повністю. У `Task` поле `metadata` виключено з хешу (`field(hash=False)`), бо `MappingProxyType` над `dict` не хешується.
+- Незмінна версія повільніша через копіювання, але безпечніша.
 
 ## Запуск
 ```

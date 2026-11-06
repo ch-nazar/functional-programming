@@ -1,26 +1,22 @@
-from closures import stvoryty_keruvanyi_hodynnyk, stvoryty_logger
-from decorators import keshovanyi, povtory, skladaty, vymiryany
-from servis import stvoryty_nestabilnyi_servis
+from closures import make_controlled_clock, make_logger
+from decorators import cached, compose, retries, timed
+from service import make_flaky_service
 
 
-def pokazaty_poryadok(nazva: str, poryadok_za_nazvoyu: str) -> None:
-    print(f"\n=== {nazva} ===")
-    hodynnyk, peresunuty = stvoryty_keruvanyi_hodynnyk()
-    zapys = stvoryty_logger("log")
-    servis, _ = stvoryty_nestabilnyi_servis(kilkist_zbiyiv=2)
-
-    def povilnyi_spy(sekundy: float) -> None:
-        peresunuty(sekundy)
-
-    kesh = keshovanyi(ttl=60, hodynnyk=hodynnyk, zapys=zapys)
-    povtor = povtory(sproby=3, zatrymka=0.5, spy=povilnyi_spy, zapys=zapys)
-    chas = vymiryany(hodynnyk=hodynnyk, zapys=zapys)
-    poryadky = {"kesh_povtor_chas": (kesh, povtor, chas), "chas_kesh_povtor": (chas, kesh, povtor)}
-    obgornutyi = skladaty(*poryadky[poryadok_za_nazvoyu])(servis)
-    print("Pershyi vyklyk:", obgornutyi(7))
-    print("Drugyi vyklyk:", obgornutyi(7))
+def show_order(title: str, cache_outer: bool) -> None:
+    print(f"\n=== {title} ===")
+    clock, advance = make_controlled_clock()
+    logger = make_logger("log")
+    service, _ = make_flaky_service(failures=2)
+    cache_decorator = cached(ttl=60, time_fn=clock, logger=logger)
+    retry_decorator = retries(attempts=3, delay=0.5, sleep=advance, logger=logger)
+    timed_decorator = timed("get_profile", unit="s", logger=logger, clock=clock)
+    order = (cache_decorator, retry_decorator, timed_decorator) if cache_outer else (timed_decorator, cache_decorator, retry_decorator)
+    wrapped = compose(*order)(service)
+    print("Pershyi vyklyk:", wrapped(7))
+    print("Drugyi vyklyk:", wrapped(7))
 
 
 if __name__ == "__main__":
-    pokazaty_poryadok("Poryadok: kesh -> povtory -> chas (chas vymiryuye kozhnu sprobu)", "kesh_povtor_chas")
-    pokazaty_poryadok("Poryadok: chas -> kesh -> povtory (chas vymiryuye kozhen vyklyk, v tomu chysli z keshu)", "chas_kesh_povtor")
+    show_order("Poryadok: cached -> retries -> timed (chas vymiryuye kozhnu sprobu)", True)
+    show_order("Poryadok: timed -> cached -> retries (chas vymiryuye kozhen vyklyk)", False)

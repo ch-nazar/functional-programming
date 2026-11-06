@@ -2,15 +2,12 @@
 
 **Тема:** абстрактне дерево запитів для фільтрації словників.
 
-## Модель
-- Вузли: `Pole`, `Rivno`, `Ta` (and), `Abo` (or), `Ne` (not) — незмінні `@dataclass(frozen=True)`.
-- `Query` — `TypeAlias` обʼєднання вузлів; `Operator` — `Literal`; `MaiePole` — `Protocol`.
+## Структура
+- `model.py` — вузли `Field`, `Eq`, `And`, `Or`, `Not`, `Query` (`TypeAlias`), `Operator` (`Literal`), `HasName` (`Protocol`).
+- `evaluator.py` — `eval_query`, `filter_records`, `query_fields` (через `match/case`, `assert_never`).
+- `pretty.py` — `render_query`; `main.py`; `tests/test_query.py`.
 
-## Операції
-- `obchyslyty_zapyt` — обчислення запиту для запису (`match/case`).
-- `renderyty_zapyt` — текстове представлення запиту.
-- `polya_zapytu`, `vidfiltruvaty` — допоміжні операції.
-- Усі гілки `match` закриті через `assert_never`. Відсутнє поле в записі дає `False`, а не помилку.
+Відсутнє поле в записі дає `False`, а не помилку.
 
 ## Запуск
 ```

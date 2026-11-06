@@ -1,16 +1,12 @@
 # Лабораторна робота 7. functools та operator (варіант 15)
 
-**Предметна область:** результати лабораторних робіт (студент, лабораторна, бал, спроби, здано).
+**Предметна область:** результати лабораторних робіт (`student`, `lab`, `score`, `attempts`, `submitted`).
 
-## Конвеєр
-`pipeline` (через `functools.reduce`): нормалізація записів → відбір зданих робіт → створення `LabResult` → підсумковий бал зі штрафом за додаткові спроби (`partial`) → Top-N.
-
-## Використані засоби
-- `operator`: `itemgetter`, `attrgetter`, `methodcaller`.
-- `functools`: `partial`, `reduce`, `singledispatch`, `total_ordering`.
-- `zavantazhyty_zapysy` (singledispatch) приймає рядок (JSON або CSV), `Path` (`.json`/`.csv`), відкритий текстовий файл та список/кортеж записів.
-- `LabResult` порівнюється за `(score, attempts, student, lab)`; для чужих типів повертається `NotImplemented`.
-- Багатокритеріальне сортування: бал за спаданням, спроби за зростанням, імʼя за зростанням (три стабільні сортування).
+## Структура
+- `models.py` — `LabResult` з `@total_ordering` за `(score, attempts, student, lab)`.
+- `loaders.py` — `load_records` через `singledispatch` для рядка (JSON/CSV), `Path`, файлу та списку.
+- `core.py` — `pipeline` (через `reduce`), `normalize_record`, `final_score` (`partial`), `multi_key_sort`, `top_n`, `process`.
+- `main.py`, `sample_data.json`, `sample_data.csv`, `tests/test_lab07.py`.
 
 ## Запуск
 ```
@@ -18,6 +14,4 @@ pip install -r requirements.txt
 python main.py
 pytest -q
 mypy --strict .
-black .
-ruff check .
 ```

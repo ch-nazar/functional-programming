@@ -4,128 +4,128 @@ from pathlib import Path
 
 import pytest
 
-from core import (bahatokryterialne_sortuvannya, normalizuvaty_zapys, obrobyty, pidsumkovyi_bal,
-                  pipeline, rozibraty_zdano, top_n, zahalnyi_bal)
-from loaders import zavantazhyty_zapysy
+from core import (multi_key_sort, normalize_record, process, final_score,
+                  pipeline, parse_submitted, top_n, total_score)
+from loaders import load_records
 from models import LabResult
 
-PAPKA = Path(__file__).parent.parent
-ZAPYSY = [
+BASE_DIR = Path(__file__).parent.parent
+RECORDS = [
     {"student": " ira ", "lab": "lab1", "score": "90", "attempts": "1", "submitted": "true"},
     {"student": "oleh", "lab": "lab1", "score": "90", "attempts": "3", "submitted": "yes"},
     {"student": "dana", "lab": "lab1", "score": "50", "attempts": "1", "submitted": "false"},
 ]
 
 
-def rezultat(student="A", lab="L1", score=50.0, attempts=1, submitted=True):
+def result(student="A", lab="L1", score=50.0, attempts=1, submitted=True):
     return LabResult(student, lab, score, attempts, submitted)
 
 
-def test_pipeline_zastosovuye_funktsiyi_po_cherzi():
+def test_pipeline_applies_functions_at_order():
     assert pipeline(3, lambda x: x + 1, lambda x: x * 2) == 8
     assert pipeline(5) == 5
 
 
-def test_partial_u_konveyeri():
-    shtraf = partial(pidsumkovyi_bal, 5.0, 100.0)
-    assert shtraf(rezultat(score=90.0, attempts=3)).score == 80.0
-    assert partial(top_n, 1)([rezultat("A", score=1.0), rezultat("B", score=2.0)])[0].student == "B"
+def test_partial_in_pipeline():
+    penalty = partial(final_score, 5.0, 100.0)
+    assert penalty(result(score=90.0, attempts=3)).score == 80.0
+    assert partial(top_n, 1)([result("A", score=1.0), result("B", score=2.0)])[0].student == "B"
 
 
-def test_pidsumkovyi_bal_meji():
-    assert pidsumkovyi_bal(2.0, 100.0, rezultat(score=120.0)).score == 100.0
-    assert pidsumkovyi_bal(50.0, 100.0, rezultat(score=10.0, attempts=5)).score == 0.0
+def test_final_score_bounds():
+    assert final_score(2.0, 100.0, result(score=120.0)).score == 100.0
+    assert final_score(50.0, 100.0, result(score=10.0, attempts=5)).score == 0.0
 
 
-def test_normalizatsiya_operator_itemgetter_methodcaller():
-    zapys = normalizuvaty_zapys(ZAPYSY[0])
-    assert zapys == {"student": "Ira", "lab": "LAB1", "score": 90.0, "attempts": 1, "submitted": True}
+def test_normalization_operator_itemgetter_methodcaller():
+    record = normalize_record(RECORDS[0])
+    assert record == {"student": "Ira", "lab": "LAB1", "score": 90.0, "attempts": 1, "submitted": True}
 
 
-def test_rozibraty_zdano():
-    assert rozibraty_zdano(True) and rozibraty_zdano("Yes") and rozibraty_zdano(" TRUE ")
-    assert not rozibraty_zdano(False) and not rozibraty_zdano("no")
+def test_parse_submitted():
+    assert parse_submitted(True) and parse_submitted("Yes") and parse_submitted(" TRUE ")
+    assert not parse_submitted(False) and not parse_submitted("no")
 
 
-def test_zavantazhennya_zi_spysku_ta_kortezha():
-    assert zavantazhyty_zapysy(ZAPYSY) == ZAPYSY
-    assert zavantazhyty_zapysy(tuple(ZAPYSY)) == ZAPYSY
+def test_loading_from_list_and_tuple():
+    assert load_records(RECORDS) == RECORDS
+    assert load_records(tuple(RECORDS)) == RECORDS
 
 
-def test_zavantazhennya_z_json_ryadka_i_csv_ryadka():
-    json_ryadok = '[{"student": "a", "lab": "l", "score": 1, "attempts": 1, "submitted": true}]'
-    csv_ryadok = "student,lab,score,attempts,submitted\na,l,1,1,true\n"
-    assert zavantazhyty_zapysy(json_ryadok)[0]["student"] == "a"
-    assert zavantazhyty_zapysy(csv_ryadok)[0]["score"] == "1"
+def test_loading_from_json_string_and_csv_string():
+    json_text = '[{"student": "a", "lab": "l", "score": 1, "attempts": 1, "submitted": true}]'
+    csv_text = "student,lab,score,attempts,submitted\na,l,1,1,true\n"
+    assert load_records(json_text)[0]["student"] == "a"
+    assert load_records(csv_text)[0]["score"] == "1"
 
 
-def test_zavantazhennya_z_path_json_ta_csv():
-    assert len(zavantazhyty_zapysy(PAPKA / "sample_data.json")) == 5
-    assert len(zavantazhyty_zapysy(PAPKA / "sample_data.csv")) == 5
+def test_loading_from_path_json_and_csv():
+    assert len(load_records(BASE_DIR / "sample_data.json")) == 5
+    assert len(load_records(BASE_DIR / "sample_data.csv")) == 5
 
 
-def test_zavantazhennya_z_vidkrytoho_fajlu_ta_stringio():
-    with open(PAPKA / "sample_data.json", encoding="utf-8") as fajl:
-        assert len(zavantazhyty_zapysy(fajl)) == 5
-    assert len(zavantazhyty_zapysy(io.StringIO("student,lab,score,attempts,submitted\na,l,1,1,true\n"))) == 1
+def test_loading_from_open_file_and_stringio():
+    with open(BASE_DIR / "sample_data.json", encoding="utf-8") as file:
+        assert len(load_records(file)) == 5
+    assert len(load_records(io.StringIO("student,lab,score,attempts,submitted\na,l,1,1,true\n"))) == 1
 
 
-def test_zavantazhennya_pomylky():
+def test_loading_errors():
     with pytest.raises(TypeError):
-        zavantazhyty_zapysy(42)
+        load_records(42)
     with pytest.raises(ValueError):
-        zavantazhyty_zapysy(PAPKA / "main.py")
+        load_records(BASE_DIR / "main.py")
     with pytest.raises(ValueError):
-        zavantazhyty_zapysy('{"a": 1}')
+        load_records('{"a": 1}')
 
 
-def test_obrobyty_vidbyraye_zdani_i_robyt_top():
-    top = obrobyty(ZAPYSY, 5, shtraf_za_sprobu=2.0)
+def test_process_selects_submitted_and_makes_top():
+    top = process(RECORDS, 5, attempt_penalty=2.0)
     assert [r.student for r in top] == ["Ira", "Oleh"]
     assert [r.score for r in top] == [90.0, 86.0]
 
 
-def test_obrobyty_obmezhuye_n():
-    assert len(obrobyty(ZAPYSY, 1)) == 1
-    assert obrobyty(ZAPYSY, 0) == []
-    assert obrobyty([], 3) == []
+def test_process_limits_n():
+    assert len(process(RECORDS, 1)) == 1
+    assert process(RECORDS, 0) == []
+    assert process([], 3) == []
 
 
-def test_bahatokryterialne_sortuvannya():
-    vkhid = [rezultat("B", score=80.0, attempts=1), rezultat("A", score=80.0, attempts=1),
-             rezultat("C", score=80.0, attempts=2), rezultat("D", score=90.0, attempts=5)]
-    vidpovid = bahatokryterialne_sortuvannya(vkhid)
-    assert [r.student for r in vidpovid] == ["D", "A", "B", "C"]
+def test_multi_key_sort():
+    input_results = [result("B", score=80.0, attempts=1), result("A", score=80.0, attempts=1),
+             result("C", score=80.0, attempts=2), result("D", score=90.0, attempts=5)]
+    sorted_results = multi_key_sort(input_results)
+    assert [r.student for r in sorted_results] == ["D", "A", "B", "C"]
 
 
-def test_zahalnyi_bal_reduce():
-    assert zahalnyi_bal([rezultat(score=1.5), rezultat(score=2.5)]) == 4.0
-    assert zahalnyi_bal([]) == 0.0
+def test_total_score_reduce():
+    assert total_score([result(score=1.5), result(score=2.5)]) == 4.0
+    assert total_score([]) == 0.0
 
 
-def test_vsi_operatory_porivnyannya():
-    menshyi = rezultat("A", score=10.0)
-    bilshyi = rezultat("A", score=20.0)
-    assert menshyi < bilshyi and menshyi <= bilshyi
-    assert bilshyi > menshyi and bilshyi >= menshyi
-    assert menshyi != bilshyi and menshyi == rezultat("A", score=10.0)
-    assert menshyi <= rezultat("A", score=10.0) and menshyi >= rezultat("A", score=10.0)
+def test_all_operators_comparison():
+    lower = result("A", score=10.0)
+    higher = result("A", score=20.0)
+    assert lower < higher and lower <= higher
+    assert higher > lower and higher >= lower
+    assert lower != higher and lower == result("A", score=10.0)
+    assert lower <= result("A", score=10.0) and lower >= result("A", score=10.0)
 
 
-def test_porivnyannya_za_sprobamy_potim_za_studentom():
-    assert rezultat("Z", score=10.0, attempts=1) < rezultat("A", score=10.0, attempts=2)
-    assert rezultat("A", score=10.0) < rezultat("B", score=10.0)
+def test_comparison_by_attempts_then_by_student():
+    assert result("Z", score=10.0, attempts=1) < result("A", score=10.0, attempts=2)
+    assert result("A", score=10.0) < result("B", score=10.0)
 
 
-def test_chuzhi_typy_dayut_not_implemented():
-    ya = rezultat()
-    assert ya.__lt__(5) is NotImplemented
-    assert ya.__eq__("abc") is NotImplemented
-    assert ya != 5 and not (ya == 5)
+def test_foreign_types_give_not_implemented():
+    me = result()
+    assert me.__lt__(5) is NotImplemented
+    assert me.__eq__("abc") is NotImplemented
+    assert me != 5 and not (me == 5)
     with pytest.raises(TypeError):
-        ya < 5
+        me < 5
 
 
-def test_hash_uzghodzhenyi_z_eq():
-    assert hash(rezultat("A")) == hash(rezultat("A"))
-    assert len({rezultat("A"), rezultat("A"), rezultat("B")}) == 2
+def test_hash_consistent_from_eq():
+    assert hash(result("A")) == hash(result("A"))
+    assert len({result("A"), result("A"), result("B")}) == 2

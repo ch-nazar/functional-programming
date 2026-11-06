@@ -12,18 +12,18 @@ class LabResult:
     attempts: int
     submitted: bool
 
-    def klyuch(self) -> tuple[float, int, str, str]:
+    def sort_key(self) -> tuple[float, int, str, str]:
         return (self.score, self.attempts, self.student, self.lab)
 
-    def __eq__(self, inshyi: Any) -> bool:
-        if not isinstance(inshyi, LabResult):
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, LabResult):
             return NotImplemented
-        return self.klyuch() == inshyi.klyuch()
+        return self.sort_key() == other.sort_key()
 
-    def __lt__(self, inshyi: Any) -> bool:
-        if not isinstance(inshyi, LabResult):
+    def __lt__(self, other: Any) -> bool:
+        if not isinstance(other, LabResult):
             return NotImplemented
-        return self.klyuch() < inshyi.klyuch()
+        return self.sort_key() < other.sort_key()
 
     def __hash__(self) -> int:
-        return hash(self.klyuch())
+        return hash(self.sort_key())

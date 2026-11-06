@@ -1,17 +1,17 @@
-from evaluator import obchyslyty_zapyt, polya_zapytu, vidfiltruvaty
-from model import Abo, Ne, Pole, Rivno, Ta
-from pretty import renderyty_zapyt
+from evaluator import eval_query, query_fields, filter_records
+from model import Or, Not, Field, Eq, And
+from pretty import render_query
 
-REKORDY = [
+RECORDS = [
     {"nazva": "Zadacha 1", "status": "open", "priorytet": 1, "terminova": True},
     {"nazva": "Zadacha 2", "status": "closed", "priorytet": 2, "terminova": False},
     {"nazva": "Zadacha 3", "status": "open", "priorytet": 3, "terminova": False},
 ]
 
 if __name__ == "__main__":
-    zapyt = Ta(Rivno(Pole("status"), "open"), Abo(Pole("terminova"), Ne(Rivno(Pole("priorytet"), 3))))
-    print("Zapyt:", renderyty_zapyt(zapyt))
-    print("Polya:", sorted(polya_zapytu(zapyt)))
-    for rekord in REKORDY:
-        print(rekord["nazva"], "->", obchyslyty_zapyt(zapyt, rekord))
-    print("Pidkhodyat:", [rekord["nazva"] for rekord in vidfiltruvaty(zapyt, REKORDY)])
+    query = And(Eq(Field("status"), "open"), Or(Field("terminova"), Not(Eq(Field("priorytet"), 3))))
+    print("Zapyt:", render_query(query))
+    print("Polya:", sorted(query_fields(query)))
+    for record in RECORDS:
+        print(record["nazva"], "->", eval_query(query, record))
+    print("Pidkhodyat:", [record["nazva"] for record in filter_records(query, RECORDS)])

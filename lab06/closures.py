@@ -1,36 +1,36 @@
 from typing import Callable
 
 
-def stvoryty_lichylnyk(pochatok: int = 0) -> Callable[[], int]:
-    znachennya = pochatok
+def make_counter(start: int = 0) -> Callable[[], int]:
+    value = start
 
-    def dodaty_odynytsyu() -> int:
-        nonlocal znachennya
-        znachennya += 1
-        return znachennya
+    def increment() -> int:
+        nonlocal value
+        value += 1
+        return value
 
-    return dodaty_odynytsyu
-
-
-def stvoryty_logger(prefiks: str, vyvid: Callable[[str], None] = print) -> Callable[[str], None]:
-    def zapysaty(povidomlennya: str) -> None:
-        vyvid(f"[{prefiks}] {povidomlennya}")
-
-    return zapysaty
+    return increment
 
 
-def stvoryty_keruvanyi_hodynnyk(pochatok: float = 0.0) -> tuple[Callable[[], float], Callable[[float], None]]:
-    potochnyi_chas = pochatok
+def make_logger(prefix: str, output: Callable[[str], None] = print) -> Callable[[str], None]:
+    def write(message: str) -> None:
+        output(f"[{prefix}] {message}")
 
-    def hodynnyk() -> float:
-        return potochnyi_chas
-
-    def peresunuty(sekundy: float) -> None:
-        nonlocal potochnyi_chas
-        potochnyi_chas += sekundy
-
-    return hodynnyk, peresunuty
+    return write
 
 
-def pustyi_zapys(povidomlennya: str) -> None:
+def make_controlled_clock(start: float = 0.0) -> tuple[Callable[[], float], Callable[[float], None]]:
+    current_time = start
+
+    def clock() -> float:
+        return current_time
+
+    def advance(seconds: float) -> None:
+        nonlocal current_time
+        current_time += seconds
+
+    return clock, advance
+
+
+def noop_logger(message: str) -> None:
     return None

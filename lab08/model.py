@@ -3,45 +3,45 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Protocol, TypeAlias
 
-Znachennya: TypeAlias = str | int | float | bool | None
+Value: TypeAlias = str | int | float | bool | None
 Operator = Literal["==", "and", "or", "not"]
 
 
-class MaiePole(Protocol):
+class HasName(Protocol):
     @property
-    def nazva(self) -> str: ...
+    def name(self) -> str: ...
 
 
 @dataclass(frozen=True)
-class Pole:
-    nazva: str
+class Field:
+    name: str
 
     def __post_init__(self) -> None:
-        if not self.nazva:
+        if not self.name:
             raise ValueError("nazva polya ne mozhe buty porozhnoyu")
 
 
 @dataclass(frozen=True)
-class Rivno:
-    pole: Pole
-    znachennya: Znachennya
+class Eq:
+    field: Field
+    value: Value
 
 
 @dataclass(frozen=True)
-class Ta:
-    livyi: Query
-    pravyi: Query
+class And:
+    left: Query
+    right: Query
 
 
 @dataclass(frozen=True)
-class Abo:
-    livyi: Query
-    pravyi: Query
+class Or:
+    left: Query
+    right: Query
 
 
 @dataclass(frozen=True)
-class Ne:
-    vnutrishnii: Query
+class Not:
+    inner: Query
 
 
-Query: TypeAlias = Pole | Rivno | Ta | Abo | Ne
+Query: TypeAlias = Field | Eq | And | Or | Not

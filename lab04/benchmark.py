@@ -2,46 +2,46 @@ import random
 import sys
 from timeit import timeit
 
-from rukzak import rukzak_bez_keshu, rukzak_iteratyvno, rukzak_z_keshem, stvoryty_rozviazuvach
+from algorithms import knapsack_no_cache, knapsack_iterative, knapsack_cached, make_solver
 
 
-def vypadkovi_predmety(kilkist: int):
+def random_items(item_count: int):
     random.seed(15)
-    vahy = [random.randint(1, 20) for _ in range(kilkist)]
-    tsinnosti = [random.randint(1, 100) for _ in range(kilkist)]
-    return vahy, tsinnosti
+    weights = [random.randint(1, 20) for _ in range(item_count)]
+    values = [random.randint(1, 100) for _ in range(item_count)]
+    return weights, values
 
 
-def porivnyaty_chas() -> None:
-    for kilkist in (10, 15, 20):
-        vahy, tsinnosti = vypadkovi_predmety(kilkist)
-        mistkist = 5 * kilkist
-        bez = timeit(lambda: rukzak_bez_keshu(vahy, tsinnosti, mistkist), number=1)
-        z = timeit(lambda: rukzak_z_keshem(vahy, tsinnosti, mistkist), number=1)
-        it = timeit(lambda: rukzak_iteratyvno(vahy, tsinnosti, mistkist), number=1)
-        print(f"n={kilkist}: bez keshu {bez:.4f} s, z keshem {z:.4f} s, iteratyvno {it:.4f} s")
+def compare_time() -> None:
+    for item_count in (10, 15, 20):
+        weights, values = random_items(item_count)
+        capacity = 5 * item_count
+        no_cache_time = timeit(lambda: knapsack_no_cache(weights, values, capacity), number=1)
+        cached_time = timeit(lambda: knapsack_cached(weights, values, capacity), number=1)
+        iter_time = timeit(lambda: knapsack_iterative(weights, values, capacity), number=1)
+        print(f"n={item_count}: bez keshu {no_cache_time:.4f} s, z keshem {cached_time:.4f} s, iteratyvno {iter_time:.4f} s")
 
 
-def pokazaty_kesh() -> None:
-    vahy, tsinnosti = vypadkovi_predmety(20)
-    rozviazuvach = stvoryty_rozviazuvach(vahy, tsinnosti)
-    print("Rezultat:", rozviazuvach(0, 100))
-    print("cache_info:", rozviazuvach.cache_info())
-    rozviazuvach.cache_clear()
-    print("Pislya cache_clear:", rozviazuvach.cache_info())
+def show_cache() -> None:
+    weights, values = random_items(20)
+    solver = make_solver(weights, values)
+    print("Rezultat:", solver(0, 100))
+    print("cache_info:", solver.cache_info())
+    solver.cache_clear()
+    print("Pislya cache_clear:", solver.cache_info())
 
 
-def pokazaty_limit_rekursiyi() -> None:
-    vahy, tsinnosti = vypadkovi_predmety(5000)
+def show_recursion_limit() -> None:
+    weights, values = random_items(5000)
     print("Limit rekursiyi CPython:", sys.getrecursionlimit())
     try:
-        rukzak_z_keshem(vahy, tsinnosti, 100)
+        knapsack_cached(weights, values, 100)
     except RecursionError:
         print("Rekursivna versiya z n=5000: RecursionError")
-    print("Iteratyvna versiya z n=5000:", rukzak_iteratyvno(vahy, tsinnosti, 100))
+    print("Iteratyvna versiya z n=5000:", knapsack_iterative(weights, values, 100))
 
 
 if __name__ == "__main__":
-    porivnyaty_chas()
-    pokazaty_kesh()
-    pokazaty_limit_rekursiyi()
+    compare_time()
+    show_cache()
+    show_recursion_limit()

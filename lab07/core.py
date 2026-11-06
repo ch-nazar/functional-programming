@@ -4,68 +4,68 @@ from itertools import islice
 from operator import add, attrgetter, itemgetter, methodcaller
 from typing import Any, Callable, Iterable
 
-from loaders import Zapys, zavantazhyty_zapysy
+from loaders import Record, load_records
 from models import LabResult
 
-TAK = frozenset({"true", "yes", "1", "tak", "так"})
-dostaty_studenta = itemgetter("student")
-dostaty_lab = itemgetter("lab")
-dostaty_bal = itemgetter("score")
-dostaty_sprobu = itemgetter("attempts")
-dostaty_zdano = itemgetter("submitted")
-prybraty_probily = methodcaller("strip")
+TRUTHY = frozenset({"true", "yes", "1", "tak", "так"})
+get_student = itemgetter("student")
+get_lab = itemgetter("lab")
+get_score = itemgetter("score")
+get_attempts = itemgetter("attempts")
+get_submitted = itemgetter("submitted")
+strip_spaces = methodcaller("strip")
 
 
-def pipeline(znachennya: Any, *funktsiyi: Callable[[Any], Any]) -> Any:
-    return reduce(lambda poperedne, funktsiya: funktsiya(poperedne), funktsiyi, znachennya)
+def pipeline(value: Any, *funcs: Callable[[Any], Any]) -> Any:
+    return reduce(lambda previous, func: func(previous), funcs, value)
 
 
-def rozibraty_zdano(znachennya: Any) -> bool:
-    return str(znachennya).strip().lower() in TAK
+def parse_submitted(value: Any) -> bool:
+    return str(value).strip().lower() in TRUTHY
 
 
-def normalizuvaty_zapys(zapys: Zapys) -> Zapys:
+def normalize_record(record: Record) -> Record:
     return {
-        "student": prybraty_probily(str(dostaty_studenta(zapys))).title(),
-        "lab": prybraty_probily(str(dostaty_lab(zapys))).upper(),
-        "score": float(dostaty_bal(zapys)),
-        "attempts": int(dostaty_sprobu(zapys)),
-        "submitted": rozibraty_zdano(dostaty_zdano(zapys)),
+        "student": strip_spaces(str(get_student(record))).title(),
+        "lab": strip_spaces(str(get_lab(record))).upper(),
+        "score": float(get_score(record)),
+        "attempts": int(get_attempts(record)),
+        "submitted": parse_submitted(get_submitted(record)),
     }
 
 
-def stvoryty_rezultat(zapys: Zapys) -> LabResult:
-    return LabResult(**zapys)
+def make_result(record: Record) -> LabResult:
+    return LabResult(**record)
 
 
-def pidsumkovyi_bal(shtraf_za_sprobu: float, maksymum: float, rezultat: LabResult) -> LabResult:
-    shtraf = shtraf_za_sprobu * max(rezultat.attempts - 1, 0)
-    return replace(rezultat, score=max(min(rezultat.score, maksymum) - shtraf, 0.0))
+def final_score(attempt_penalty: float, max_score: float, result: LabResult) -> LabResult:
+    penalty = attempt_penalty * max(result.attempts - 1, 0)
+    return replace(result, score=max(min(result.score, max_score) - penalty, 0.0))
 
 
-def bahatokryterialne_sortuvannya(rezultaty: Iterable[LabResult]) -> list[LabResult]:
-    za_imenem = sorted(rezultaty, key=attrgetter("student"))
-    za_sprobamy = sorted(za_imenem, key=attrgetter("attempts"))
-    return sorted(za_sprobamy, key=attrgetter("score"), reverse=True)
+def multi_key_sort(results: Iterable[LabResult]) -> list[LabResult]:
+    by_name = sorted(results, key=attrgetter("student"))
+    by_attempts = sorted(by_name, key=attrgetter("attempts"))
+    return sorted(by_attempts, key=attrgetter("score"), reverse=True)
 
 
-def top_n(n: int, rezultaty: Iterable[LabResult]) -> list[LabResult]:
-    return list(islice(bahatokryterialne_sortuvannya(rezultaty), max(n, 0)))
+def top_n(n: int, results: Iterable[LabResult]) -> list[LabResult]:
+    return list(islice(multi_key_sort(results), max(n, 0)))
 
 
-def zahalnyi_bal(rezultaty: Iterable[LabResult]) -> float:
-    return reduce(add, map(attrgetter("score"), rezultaty), 0.0)
+def total_score(results: Iterable[LabResult]) -> float:
+    return reduce(add, map(attrgetter("score"), results), 0.0)
 
 
-def pobuduvaty_konveyer(n: int, shtraf_za_sprobu: float = 2.0, maksymum: float = 100.0) -> list[Callable[[Any], Any]]:
+def build_pipeline(n: int, attempt_penalty: float = 2.0, max_score: float = 100.0) -> list[Callable[[Any], Any]]:
     return [
-        partial(map, normalizuvaty_zapys),
-        partial(filter, dostaty_zdano),
-        partial(map, stvoryty_rezultat),
-        partial(map, partial(pidsumkovyi_bal, shtraf_za_sprobu, maksymum)),
+        partial(map, normalize_record),
+        partial(filter, get_submitted),
+        partial(map, make_result),
+        partial(map, partial(final_score, attempt_penalty, max_score)),
         partial(top_n, n),
     ]
 
 
-def obrobyty(dzherelo: Any, n: int, shtraf_za_sprobu: float = 2.0, maksymum: float = 100.0) -> list[LabResult]:
-    return pipeline(zavantazhyty_zapysy(dzherelo), *pobuduvaty_konveyer(n, shtraf_za_sprobu, maksymum))
+def process(source: Any, n: int, attempt_penalty: float = 2.0, max_score: float = 100.0) -> list[LabResult]:
+    return pipeline(load_records(source), *build_pipeline(n, attempt_penalty, max_score))

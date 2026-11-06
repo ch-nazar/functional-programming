@@ -1,87 +1,139 @@
 import functools
+import random
+import threading
 import time
 from functools import reduce
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, Callable, Hashable, Literal, ParamSpec, TypeVar
 
-from closures import pustyi_zapys
+from closures import noop_logger
 
 P = ParamSpec("P")
 R = TypeVar("R")
-Dekorator = Callable[[Callable[P, R]], Callable[P, R]]
+Decorator = Callable[[Callable[P, R]], Callable[P, R]]
 
 
-def vymiryany(hodynnyk: Callable[[], float] = time.perf_counter,
-              zapys: Callable[[str], None] = pustyi_zapys) -> Dekorator:
-    def dekorator(funktsiya: Callable[P, R]) -> Callable[P, R]:
-        @functools.wraps(funktsiya)
-        def obgortka(*args: P.args, **kwargs: P.kwargs) -> R:
-            pochatok = hodynnyk()
+def timed(
+    label: str | None = None,
+    *,
+    unit: Literal["s", "ms", "us"] = "ms",
+    logger: Callable[[str], None] = print,
+    clock: Callable[[], float] = time.perf_counter,
+) -> Decorator:
+    factor = {"s": 1.0, "ms": 1e3, "us": 1e6}[unit]
+
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        name = label or func.__name__
+
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            start = clock()
             try:
-                return funktsiya(*args, **kwargs)
+                return func(*args, **kwargs)
             finally:
-                zapys(f"{funktsiya.__name__} trvala {hodynnyk() - pochatok:.3f} s")
+                elapsed = (clock() - start) * factor
+                logger(f"[timed] {name} took {elapsed:.3f} {unit}")
 
-        return obgortka
+        return wrapper
 
-    return dekorator
+    return decorator
 
 
-def povtory(sproby: int,
-            vynyatky: tuple[type[BaseException], ...] = (Exception,),
-            zatrymka: float = 0.0,
-            spy: Callable[[float], None] = time.sleep,
-            zapys: Callable[[str], None] = pustyi_zapys) -> Dekorator:
-    if sproby <= 0:
-        raise ValueError("sproby maye buty bilshe nulya")
+def retries(
+    attempts: int = 3,
+    exceptions: tuple[type[BaseException], ...] = (Exception,),
+    delay: float = 0.0,
+    backoff: float = 1.0,
+    jitter: float = 0.0,
+    *,
+    sleep: Callable[[float], None] = time.sleep,
+    logger: Callable[[str], None] = noop_logger,
+) -> Decorator:
+    assert attempts >= 1
 
-    def dekorator(funktsiya: Callable[P, R]) -> Callable[P, R]:
-        @functools.wraps(funktsiya)
-        def obgortka(*args: P.args, **kwargs: P.kwargs) -> R:
-            for nomer in range(1, sproby):
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            last_error: BaseException | None = None
+            for attempt in range(1, attempts + 1):
                 try:
-                    return funktsiya(*args, **kwargs)
-                except vynyatky as pomylka:
-                    zapys(f"sproba {nomer} z {sproby} ne vdalas: {pomylka}")
-                    spy(zatrymka)
-            return funktsiya(*args, **kwargs)
+                    return func(*args, **kwargs)
+                except exceptions as error:
+                    last_error = error
+                    if attempt == attempts:
+                        logger(f"[retries] fail after {attempt} attempts: {error!r}")
+                        break
+                    wait = delay * (backoff ** (attempt - 1)) + (random.random() * jitter if jitter else 0.0)
+                    logger(f"[retries] attempt {attempt} failed: {error!r}; sleeping {wait:.3f}s")
+                    sleep(wait)
+            assert last_error is not None
+            raise last_error
 
-        return obgortka
+        return wrapper
 
-    return dekorator
-
-
-def keshovanyi(ttl: float,
-               hodynnyk: Callable[[], float] = time.monotonic,
-               zapys: Callable[[str], None] = pustyi_zapys) -> Dekorator:
-    def dekorator(funktsiya: Callable[P, R]) -> Callable[P, R]:
-        zberezheni: dict[Any, tuple[R, float]] = {}
-        lichylnyky = {"vluchannya": 0, "promakhy": 0}
-
-        @functools.wraps(funktsiya)
-        def obgortka(*args: P.args, **kwargs: P.kwargs) -> R:
-            klyuch = (args, tuple(sorted(kwargs.items())))
-            if klyuch in zberezheni:
-                znachennya, moment = zberezheni[klyuch]
-                if hodynnyk() - moment < ttl:
-                    lichylnyky["vluchannya"] += 1
-                    zapys(f"kesh: vluchannya dlya {klyuch}")
-                    return znachennya
-                del zberezheni[klyuch]
-            lichylnyky["promakhy"] += 1
-            zapys(f"kesh: promakh dlya {klyuch}")
-            rezultat = funktsiya(*args, **kwargs)
-            zberezheni[klyuch] = (rezultat, hodynnyk())
-            return rezultat
-
-        setattr(obgortka, "cache_clear", zberezheni.clear)
-        setattr(obgortka, "cache_info", lambda: dict(lichylnyky, rozmir=len(zberezheni)))
-        return obgortka
-
-    return dekorator
+    return decorator
 
 
-def skladaty(*dekoratory: Dekorator) -> Dekorator:
-    def dekorator(funktsiya: Callable[P, R]) -> Callable[P, R]:
-        return reduce(lambda poperednya, d: d(poperednya), reversed(dekoratory), funktsiya)
+def make_key(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Hashable:
+    return (args, tuple(sorted(kwargs.items())))
 
-    return dekorator
+
+def cached(
+    *,
+    ttl: float | None = None,
+    time_fn: Callable[[], float] = time.time,
+    logger: Callable[[str], None] = noop_logger,
+) -> Decorator:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        cache: dict[Hashable, tuple[float | None, R]] = {}
+        stats = {"hits": 0, "misses": 0}
+        lock = threading.Lock()
+
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            key = make_key(args, kwargs)
+            now = time_fn()
+            with lock:
+                if key in cache:
+                    expiry, value = cache[key]
+                    if expiry is None or now < expiry:
+                        stats["hits"] += 1
+                        logger(f"[cached] hit {key}")
+                        return value
+                    del cache[key]
+                stats["misses"] += 1
+            logger(f"[cached] miss {key}")
+            value = func(*args, **kwargs)
+            with lock:
+                cache[key] = (None if ttl is None else now + ttl, value)
+            return value
+
+        def cache_clear() -> None:
+            with lock:
+                cache.clear()
+
+        def cache_invalidate(predicate: Callable[[tuple[Any, ...], dict[str, Any]], bool]) -> int:
+            removed = 0
+            with lock:
+                for key in list(cache.keys()):
+                    if predicate(key[0], dict(key[1])):
+                        del cache[key]
+                        removed += 1
+            return removed
+
+        def cache_info() -> dict[str, int]:
+            with lock:
+                return {"hits": stats["hits"], "misses": stats["misses"], "size": len(cache)}
+
+        setattr(wrapper, "cache_clear", cache_clear)
+        setattr(wrapper, "cache_invalidate", cache_invalidate)
+        setattr(wrapper, "cache_info", cache_info)
+        return wrapper
+
+    return decorator
+
+
+def compose(*decorators: Decorator) -> Decorator:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        return reduce(lambda previous, deco: deco(previous), reversed(decorators), func)
+
+    return decorator

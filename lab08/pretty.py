@@ -1,21 +1,21 @@
 from typing import assert_never
 
-from model import Abo, Ne, Operator, Pole, Query, Rivno, Ta
+from model import Or, Not, Operator, Field, Query, Eq, And
 
-ZNAKY: dict[Operator, str] = {"==": "==", "and": "and", "or": "or", "not": "not"}
+SYMBOLS: dict[Operator, str] = {"==": "==", "and": "and", "or": "or", "not": "not"}
 
 
-def renderyty_zapyt(zapyt: Query) -> str:
-    match zapyt:
-        case Pole(nazva):
-            return nazva
-        case Rivno(pole, znachennya):
-            return f"{pole.nazva} {ZNAKY['==']} {znachennya!r}"
-        case Ta(livyi, pravyi):
-            return f"({renderyty_zapyt(livyi)} {ZNAKY['and']} {renderyty_zapyt(pravyi)})"
-        case Abo(livyi, pravyi):
-            return f"({renderyty_zapyt(livyi)} {ZNAKY['or']} {renderyty_zapyt(pravyi)})"
-        case Ne(vnutrishnii):
-            return f"{ZNAKY['not']} {renderyty_zapyt(vnutrishnii)}"
+def render_query(query: Query) -> str:
+    match query:
+        case Field(name):
+            return name
+        case Eq(field, value):
+            return f"{field.name} {SYMBOLS['==']} {value!r}"
+        case And(left, right):
+            return f"({render_query(left)} {SYMBOLS['and']} {render_query(right)})"
+        case Or(left, right):
+            return f"({render_query(left)} {SYMBOLS['or']} {render_query(right)})"
+        case Not(inner):
+            return f"{SYMBOLS['not']} {render_query(inner)}"
         case _:
-            assert_never(zapyt)
+            assert_never(query)
